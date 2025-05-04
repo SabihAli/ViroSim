@@ -41,21 +41,15 @@ class Node:
         vax_status (bool): Determines whether the individual is vaccinated or not.
 
         superspreader (bool): Determines whether the individual is a superspreader or not
-
-        temp_immune (bool): If the individual has recovered recently, they will be temporarily immune.
-
-
-
     """
 
-    def __init__(self, infection_status, age, health_factor, mask_usage, vax_status, superspreader, temp_immune, is_indoor):
+    def __init__(self, infection_status, age, health_factor, mask_usage, vax_status, superspreader):
         self.infection_status = infection_status
         self.age = age
         self.health_factor = health_factor
         self.mask_usage = mask_usage
         self.vax_status = vax_status
         self.superspreader = superspreader
-        self.temp_immune = temp_immune
 
 
 
@@ -88,6 +82,7 @@ class Edge:
         (MIN: 0, MAX: 1) (normalized)
 
         infection_prob (float): The probability of infecting adjacent node
+        (MIN: 0, MAX: 1)
     """
 
     def __init__(self, node_one, node_two, rs_strength, contact_freq, avg_interact_duration, indoor_ratio, physical_dist):
@@ -98,4 +93,4 @@ class Edge:
         self.avg_interact_duration = avg_interact_duration
         self.physical_dist = physical_dist
         self.indoor_ratio = indoor_ratio
-        self.infection_prob = 0 # TODO: build infection probability formula
+        self.infection_prob = 1 / (1 + abs(node_two.age - node_one.age)
