@@ -1,5 +1,6 @@
 import random
-
+avg = 0
+count = 0
 age_brackets = [
     (0, 4),  # toddlers
     (5, 17),  # children
@@ -29,3 +30,11 @@ def generate_health_factor(lower_bias):
 
 def generate_biased_bool(true_bias):
     return random.choices([True, False], weights=[true_bias, 1 - true_bias])[0]
+
+def generate_recovery_time(node_data):
+    global avg
+    global count
+    age_factor = (node_data.age / 110) ** 2
+    health_factor = node_data.health_factor
+    multiplier = (2 * age_factor + health_factor) / 3
+    return 3 + (11 * multiplier)

@@ -31,6 +31,8 @@ class Node:
     Attributes:
         infection_status (InfectionStatus): The infection status of the individual
 
+        death_probability (float): The probability of the individual dying due to the disease, MUST be infected. Updates on each tick.
+
         age (int): The age of the individual (Older people may be more susceptible)
 
         health_factor (float): Factor which increases susceptibility due to past health conditions.
@@ -45,11 +47,16 @@ class Node:
 
     def __init__(self, infection_status, age, health_factor, mask_usage, vax_status, superspreader):
         self.infection_status = infection_status
+        self.infected_tick = None
+        self.recovery_tick = None
+        self.recovery_time = None
+        self.death_probability = None
         self.age = age
         self.health_factor = health_factor
         self.mask_usage = mask_usage
         self.vax_status = vax_status
         self.superspreader = superspreader
+
 
 
 
@@ -93,4 +100,4 @@ class Edge:
         self.avg_interact_duration = avg_interact_duration
         self.physical_dist = physical_dist
         self.indoor_ratio = indoor_ratio
-        self.infection_prob = 1 / (1 + abs(node_two.age - node_one.age)
+        self.infection_prob = 1 / (1 + abs(node_two.age - node_one.age))
