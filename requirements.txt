@@ -1,2 +1,7 @@
 networkx
 scipy
+fastapi
+uvicorn
+Cython
+tqdm
+

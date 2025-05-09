@@ -2,8 +2,8 @@ from random import randint
 
 from backend.util.probability_calculations import get_death_prob, get_infection_prob
 from backend.app.models import InfectionStatus
-from backend.app.network_gen import get_network, set_nodes
 from backend.util.node_initialization import generate_recovery_time
+from backend.app.states import graph_lock  # Ensure this is an asyncio.Lock
 
 import asyncio
 import random
@@ -11,83 +11,54 @@ import random
 avg = 0
 count = 0
 
-"""
-    - CURRENTLY_INFECTED is the set of nodes which have infection status: INFECTED
-    - RECOVERED is the set of nodes which have infection status: RECOVERED
-    - TO_REMOVE is a set of nodes which have recovered or died.
-    
-    What is the point of these three sets?
-        - On each tick, all nodes in CURRENTLY_INFECTED are traversed. For each infected node:
-            i) Retrieve neighbors of that node.
-            ii) For each neighbor, check if susceptible
-            iii) if susceptible, assign infection probability
-            iv) Use infection prob to see if neighbor gets infected
-            v) if infected, add neighbor node to new_infections set
-            vi) After iterating through all currently infected nodes, add new_infections to CURRENTLY_INFECTEDd
-        
-        - RECOVERED is required in order to revert recovered nodes to SUSCEPTIBLE after a specific number of ticks.
-        
-        - TO_REMOVE is used to update CURRENTLY_INFECTED by removing nodes which have died or recovered.
-"""
-
 CURRENTLY_INFECTED = set()
 RECOVERED = set()
 TO_REMOVE = set()
 DECEASED = set()
 
-TICK_INTERVAL = 0.25
+TICK_INTERVAL = 0.125
 simulation_running = True
 current_tick = 0
+tick_updates = {}
 
 def run_tick(graph):
     global current_tick
     new_infections = set()
+    new_recoveries = set()
+    new_deaths = set()
+    re_susceptibles = set()
 
     for node_id in list(RECOVERED):
         node_data = graph.nodes[node_id]['data']
-
         ticks_since_recovery = current_tick - node_data.recovery_tick
         if ticks_since_recovery >= 14:
             node_data.infection_status = InfectionStatus.SUSCEPTIBLE
+            re_susceptibles.add(node_id)
             RECOVERED.remove(node_id)
-            # print('i recovered yayyy')
-
-
-
 
     for node_id in list(CURRENTLY_INFECTED):
-
         node_data = graph.nodes[node_id]['data']
-
         infected_tick = node_data.infected_tick
         recovery_time = node_data.recovery_time
         death_probability = get_death_prob(node_data, current_tick)
-        # print(death_probability)
         node_data.death_probability = death_probability
 
-        rand = random.random()
-        # avg += rand
-        # count += 1
-        # print(avg/count)
-        if rand <= death_probability:
+        if random.random() <= death_probability:
             kill(graph, node_id)
+            new_deaths.add(node_id)
             continue
-
 
         if current_tick - infected_tick >= recovery_time:
             recover(graph, node_id)
+            new_recoveries.add(node_id)
             continue
 
         for neighbor_id in graph.neighbors(node_id):
             neighbor_data = graph.nodes[neighbor_id]['data']
-            if neighbor_data.infection_status == InfectionStatus.SUSCEPTIBLE:
-
-
+            if neighbor_data.infection_status.value == "S":
                 edge = graph[node_id][neighbor_id]
                 if 'infection_prob' not in edge:
                     edge['infection_prob'] = get_infection_prob(node_data, neighbor_data)
-
-
                 if random.random() <= edge['infection_prob']:
                     infect(graph, neighbor_id)
                     new_infections.add(neighbor_id)
@@ -96,31 +67,28 @@ def run_tick(graph):
     CURRENTLY_INFECTED.difference_update(TO_REMOVE)
     TO_REMOVE.clear()
 
-    return new_infections
-
-
+    return {
+        "infected": list(new_infections),
+        "recovered": list(new_recoveries),
+        "deceased": list(new_deaths),
+        "susceptible": list(re_susceptibles)
+    }
 
 def infect(graph, node_id):
-    global current_tick, count, avg
+    global current_tick
     node_data = graph.nodes[node_id]['data']
     node_data.infected_tick = current_tick
     node_data.death_probability = get_death_prob(node_data, current_tick)
-    # print(node_data.death_probability)
     node_data.infection_status = InfectionStatus.INFECTED
     node_data.recovery_time = generate_recovery_time(node_data)
     CURRENTLY_INFECTED.add(node_id)
 
-
     for neighbor_id in graph.neighbors(node_id):
-
         neighbor_data = graph.nodes[neighbor_id]['data']
         graph[node_id][neighbor_id]['infection_prob'] = get_infection_prob(node_data, neighbor_data)
-        # print(graph[node_id][neighbor_id]['infection_prob'])
-
 
 def recover(graph, node_id):
     global current_tick
-
     node_data = graph.nodes[node_id]['data']
     node_data.infection_status = InfectionStatus.RECOVERED
     node_data.recovery_tick = current_tick
@@ -131,49 +99,43 @@ def kill(graph, node_id):
     graph.nodes[node_id]['data'].infection_status = InfectionStatus.DECEASED
     TO_REMOVE.add(node_id)
     DECEASED.add(node_id)
-    pass
 
 def randomly_infect(graph, num_infections):
+    # valid_nodes = list(graph.nodes)  # Get actual existing nodes
     for _ in range(num_infections):
-        infect(graph, randint(0, 5000))
+        # node_id = random.choice(valid_nodes)  # Safe selection
+        infect(graph, randint(0, 9999))
 
+async def simulate(graph):
+    global current_tick, simulation_running, tick_updates
 
-
-
-
-async def simulate():
-    global current_tick
-    graph = get_network(5000, 4, 0.1)
-    set_nodes(graph)
-
-    randomly_infect(graph, 50)
+    async with graph_lock:  # Use async with for asyncio lock
+        randomly_infect(graph, 50)
 
     while simulation_running and CURRENTLY_INFECTED:
-        visualize_graph_live(graph, current_tick)
-        run_tick(graph)
-        print("INFECTED: " + str(len(CURRENTLY_INFECTED)))
-        print("RECOVERED: " + str(len(RECOVERED)))
-        print("DECEASED: " + str(len(DECEASED)))
-        print("TICKS:" + str(current_tick))
+        async with graph_lock:  # Protect each tick with the lock
+            tick_updates = run_tick(graph)
+
+
+        print(f"INFECTED: {len(CURRENTLY_INFECTED)}")
+        print(f"RECOVERED: {len(RECOVERED)}")
+        print(f"DECEASED: {len(DECEASED)}")
+        print(f"TICKS: {current_tick}")
         current_tick += 1
         await asyncio.sleep(TICK_INTERVAL)
 
 
 
-import matplotlib.pyplot as plt
-import networkx as nx
-
-# Calculate layout only once
-POS = None
-
 def visualize_graph_live(graph, tick):
     global POS
     if POS is None:
-        POS = nx.spring_layout(graph, seed=42)  # Cache layout once
+        POS = nx.spring_layout(graph, seed=42)
+
 
     color_map = []
     for node_id in graph.nodes:
         status = graph.nodes[node_id]['data'].infection_status
+
 
         if status == InfectionStatus.INFECTED:
             color_map.append('red')
