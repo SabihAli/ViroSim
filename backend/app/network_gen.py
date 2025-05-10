@@ -4,16 +4,13 @@ import os
 
 import networkx as nx
 from backend.app.models import Node, InfectionStatus
-
 from backend.util.node_initialization import *
 from backend.util.probability_calculations import get_infection_prob, get_death_prob
-import asyncio
 
 
 def get_network(n, k, p):
     graph = nx.generators.random_graphs.watts_strogatz_graph(n, k, p)
     set_nodes(graph)
-
     return graph
 
 

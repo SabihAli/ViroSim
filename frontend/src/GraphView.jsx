@@ -81,7 +81,7 @@ export default function GraphView() {
             } catch (err) {
                 console.error("Update failed:", err);
             }
-        }, 125);
+        }, 500);
 
         return () => {
             isMounted = false;

@@ -2,7 +2,7 @@ from backend.app.network_gen import get_network
 from fa2_modified import ForceAtlas2
 import asyncio
 
-graph = get_network(10000, 4, 0.1)
+graph = get_network(30000, 4, 0.1)
 forceatlas2 = ForceAtlas2(
     outboundAttractionDistribution=False,  # Disable edge weight influence
     scalingRatio=3.0,                          # Analogous to "k" in spring_layout

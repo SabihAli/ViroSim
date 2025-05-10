@@ -3,7 +3,7 @@ from random import randint
 from backend.util.probability_calculations import get_death_prob, get_infection_prob
 from backend.app.models import InfectionStatus
 from backend.util.node_initialization import generate_recovery_time
-from backend.app.states import graph_lock  # Ensure this is an asyncio.Lock
+from backend.app.states import graph_lock
 
 import asyncio
 import random
@@ -16,7 +16,7 @@ RECOVERED = set()
 TO_REMOVE = set()
 DECEASED = set()
 
-TICK_INTERVAL = 0.125
+TICK_INTERVAL = 0.5
 simulation_running = True
 current_tick = 0
 tick_updates = {}
@@ -31,10 +31,13 @@ def run_tick(graph):
     for node_id in list(RECOVERED):
         node_data = graph.nodes[node_id]['data']
         ticks_since_recovery = current_tick - node_data.recovery_tick
+
+        # Temporary immunity runs out, node becomes susceptible again
         if ticks_since_recovery >= 14:
             node_data.infection_status = InfectionStatus.SUSCEPTIBLE
             re_susceptibles.add(node_id)
             RECOVERED.remove(node_id)
+
 
     for node_id in list(CURRENTLY_INFECTED):
         node_data = graph.nodes[node_id]['data']
@@ -43,6 +46,7 @@ def run_tick(graph):
         death_probability = get_death_prob(node_data, current_tick)
         node_data.death_probability = death_probability
 
+        # Death logic
         if random.random() <= death_probability:
             kill(graph, node_id)
             new_deaths.add(node_id)
@@ -101,19 +105,18 @@ def kill(graph, node_id):
     DECEASED.add(node_id)
 
 def randomly_infect(graph, num_infections):
-    # valid_nodes = list(graph.nodes)  # Get actual existing nodes
+
     for _ in range(num_infections):
-        # node_id = random.choice(valid_nodes)  # Safe selection
         infect(graph, randint(0, 9999))
 
 async def simulate(graph):
     global current_tick, simulation_running, tick_updates
 
-    async with graph_lock:  # Use async with for asyncio lock
+    async with graph_lock:
         randomly_infect(graph, 50)
 
     while simulation_running and CURRENTLY_INFECTED:
-        async with graph_lock:  # Protect each tick with the lock
+        async with graph_lock:
             tick_updates = run_tick(graph)
 
 
