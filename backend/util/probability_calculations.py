@@ -106,7 +106,7 @@ def get_infection_prob(node_one_data, node_two_data):
     node_two_score = get_node_score(node_two_data.age, node_two_data.health_factor, node_two_data.mask_usage,
                                     node_two_data.vax_status, node_two_data.superspreader)
 
-    return ((node_one_score + node_two_score + 3 * rs_strength) / 5) ** 0.35
+    return ((node_one_score + node_two_score + 3 * rs_strength) / 5) ** 0.5
 
 
 def get_death_prob(node_data, current_tick):

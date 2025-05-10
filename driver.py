@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import networkx as nx
+import backend.app.states as states
 from backend.app.states import graph, pos, graph_lock  # Ensure graph_lock is asyncio.Lock
-# from backend.app.sim_engine import tick_updates, simulate
 import backend.app.sim_engine as sim_engine
 import asyncio
 
@@ -21,26 +21,26 @@ app.add_middleware(
 @app.on_event("startup")
 async def start_simulation():
     # Use asyncio.create_task() to run the simulation without blocking FastAPI
-    asyncio.create_task(sim_engine.simulate(graph))
+    asyncio.create_task(sim_engine.simulate(states.graph))
 
 @app.get("/graph")
 async def get_graph_data():  # Changed to async endpoint
-    async with graph_lock:  # Proper async lock usage
+    async with states.graph_lock:  # Proper async lock usage
         nodes = [
             {
                 "id": n,
-                "status": graph.nodes[n]["data"].infection_status.value,
-                "x": pos[n][0],
-                "y": pos[n][1]
+                "status": states.graph.nodes[n]["data"].infection_status.value,
+                "x": states.pos[n][0],
+                "y": states.pos[n][1]
             }
-            for n in graph.nodes
+            for n in states.graph.nodes
         ]
-        edges = [{"source": u, "target": v} for u, v in graph.edges]
+        edges = [{"source": u, "target": v} for u, v in states.graph.edges]
     return {"nodes": nodes, "edges": edges}
 
 @app.get("/tick-updates")
 async def get_tick_updates():  # Changed to async endpoint
-    async with graph_lock:  # Proper async lock usage
+    async with states.graph_lock:  # Proper async lock usage
         updates = []
         for status_type, affected_nodes in sim_engine.tick_updates.items():
             updates.extend([
@@ -51,6 +51,21 @@ async def get_tick_updates():  # Changed to async endpoint
                 for n in affected_nodes
             ])
         return {"nodes": updates}
+
+@app.get("/count-updates")
+async def get_count_updates():
+    async with states.graph_lock:
+        i_count = len(sim_engine.CURRENTLY_INFECTED)
+        r_count = len(sim_engine.RECOVERED)
+        d_count = len(sim_engine.DECEASED)
+        s_count = states.graph_size - i_count - r_count - d_count
+
+    return {
+        "infected": i_count,
+        "recovered": r_count,
+        "deceased": d_count,
+        "susceptible": s_count
+    }
 
 def get_status(status_key: str) -> str:
     status_mapping = {

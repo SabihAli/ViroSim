@@ -3,7 +3,7 @@ from random import randint
 from backend.util.probability_calculations import get_death_prob, get_infection_prob
 from backend.app.models import InfectionStatus
 from backend.util.node_initialization import generate_recovery_time
-from backend.app.states import graph_lock
+import backend.app.states as states
 
 import asyncio
 import random
@@ -107,16 +107,16 @@ def kill(graph, node_id):
 def randomly_infect(graph, num_infections):
 
     for _ in range(num_infections):
-        infect(graph, randint(0, 9999))
+        infect(graph, randint(0, states.graph_size - 1))
 
 async def simulate(graph):
     global current_tick, simulation_running, tick_updates
 
-    async with graph_lock:
+    async with states.graph_lock:
         randomly_infect(graph, 50)
 
     while simulation_running and CURRENTLY_INFECTED:
-        async with graph_lock:
+        async with states.graph_lock:
             tick_updates = run_tick(graph)
 
 
