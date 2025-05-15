@@ -85,22 +85,6 @@ def get_node_score(age, health_factor, mask_usage, vax_status, superspreader):
 def get_infection_prob(node_one_data, node_two_data):
     rs_strength = get_rs_strength(node_one_data.age, node_two_data.age)
 
-    # We know that node_one's status is INFECTED.
-    # node_two's status MUST be susceptible, or the probability will be zero
-    # # OLD LOGIC:
-    # if node_one.infection_status != InfectionStatus.INFECTED and node_two.infection_status != InfectionStatus.INFECTED:
-    #     return 0
-    #
-    # if node_one.infection_status == InfectionStatus.DECEASED or node_two.infection_status == InfectionStatus.DECEASED:
-    #     return 0
-    #
-    # if node_one.infection_status == InfectionStatus.RECOVERED or node_two.infection_status == InfectionStatus.RECOVERED:
-    #     return 0
-
-    # # This is also useless, as this check is being done before callign the function
-    # if node_two.infection_status != InfectionStatus.SUSCEPTIBLE:
-    #     return 0
-
     node_one_score = get_node_score(node_one_data.age, node_one_data.health_factor, node_one_data.mask_usage,
                                     node_one_data.vax_status, node_one_data.superspreader)
     node_two_score = get_node_score(node_two_data.age, node_two_data.health_factor, node_two_data.mask_usage,
@@ -110,12 +94,13 @@ def get_infection_prob(node_one_data, node_two_data):
 
 
 def get_death_prob(node_data, current_tick):
-    global avg, count
     infect_duration = current_tick - node_data.infected_tick
     age_score = node_data.age / 110
-    # time_score = 1 - math.exp(-infect_duration / 10)  # Smooth increase, caps near 1
-    # avg += (0.5 * age_score + 0.5 * node_data.health_factor) ** 3
-    # count += 1
-    # print(avg / count)
 
-    return (0.5 * age_score + 0.5 * node_data.health_factor) ** 10
+    # Infection duration factor: scales from 0 to 1 logarithmically for longer durations
+    duration_factor = min(1.0, math.log1p(infect_duration) / math.log1p(30))
+
+    """ Expression is [0,1]. Raised to power 10 to ensure death probability is very low. """
+    return (0.35 * age_score + 0.4 * node_data.health_factor + 0.25 * duration_factor) ** 10
+
+

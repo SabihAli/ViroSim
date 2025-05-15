@@ -28,6 +28,12 @@ def run_tick(graph):
     new_deaths = set()
     re_susceptibles = set()
 
+    """
+        - Traverse through recovered nodes
+        - Check if it has been 14 ticks since they recovered.
+        - If yes, remove their temporary immunity.
+        - Make them susceptible again.
+    """
     for node_id in list(RECOVERED):
         node_data = graph.nodes[node_id]['data']
         ticks_since_recovery = current_tick - node_data.recovery_tick
@@ -39,6 +45,15 @@ def run_tick(graph):
             RECOVERED.remove(node_id)
 
 
+    """
+        - Traverse through infected nodes
+        - Recalculate death probabilities (they depend on elapsed time)
+        - Kill nodes according to death probabilities
+        - Traverse through infected node's neighbors
+            ~ According to infection probabilities, infect neighbors
+            ~ On infection, recovery time is randomly generated (age is a factor)
+        - Cure nodes according to recovery time
+    """
     for node_id in list(CURRENTLY_INFECTED):
         node_data = graph.nodes[node_id]['data']
         infected_tick = node_data.infected_tick
@@ -119,47 +134,5 @@ async def simulate(graph):
         async with states.graph_lock:
             tick_updates = run_tick(graph)
 
-
-        print(f"INFECTED: {len(CURRENTLY_INFECTED)}")
-        print(f"RECOVERED: {len(RECOVERED)}")
-        print(f"DECEASED: {len(DECEASED)}")
-        print(f"TICKS: {current_tick}")
         current_tick += 1
         await asyncio.sleep(TICK_INTERVAL)
-
-
-
-def visualize_graph_live(graph, tick):
-    global POS
-    if POS is None:
-        POS = nx.spring_layout(graph, seed=42)
-
-
-    color_map = []
-    for node_id in graph.nodes:
-        status = graph.nodes[node_id]['data'].infection_status
-
-
-        if status == InfectionStatus.INFECTED:
-            color_map.append('red')
-        elif status == InfectionStatus.RECOVERED:
-            color_map.append('green')
-        elif status == InfectionStatus.SUSCEPTIBLE:
-            color_map.append('yellow')
-        elif status == InfectionStatus.DECEASED:
-            color_map.append('black')
-        else:
-            color_map.append('gray')
-
-    plt.clf()
-    nx.draw(
-        graph,
-        POS,
-        node_color=color_map,
-        node_size=120,
-        edge_color='lightgray',
-        with_labels=False  # No labels for better performance
-    )
-
-    plt.title(f"Infection Spread at Tick {tick}")
-    plt.pause(0.001)

@@ -11,6 +11,10 @@ forceatlas2 = ForceAtlas2(
     verbose=False                               # Reproducibility
 )
 
+graph_size = 15000
+graph = get_network(graph_size, 4, 0.1)
+pos = forceatlas2.forceatlas2_networkx_layout(graph, pos=None, iterations=100)
+
 
 current_tick = 0
 CURRENTLY_INFECTED = set()
@@ -18,7 +22,5 @@ RECOVERED = set()
 DECEASED = set()
 TO_REMOVE = set()
 TICK_INTERVAL = 0.25
-graph_size = 15000
-graph = get_network(graph_size, 4, 0.1)
-pos = forceatlas2.forceatlas2_networkx_layout(graph, pos=None, iterations=100)
+
 graph_lock = asyncio.Lock()
