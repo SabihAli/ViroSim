@@ -30,10 +30,10 @@ export default function GraphView() {
                     });
                 });
 
-                // Add edges
-                data.edges.forEach(edge => {
-                    graphRef.current.addEdge(edge.source, edge.target);
-                });
+                // // Add edges
+                // data.edges.forEach(edge => {
+                //     graphRef.current.addEdge(edge.source, edge.target);
+                // });
 
                 // Initialize/Update Sigma
                 if (!sigmaRef.current) {

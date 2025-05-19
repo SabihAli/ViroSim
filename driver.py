@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import networkx as nx
 import backend.app.states as states
-from backend.app.states import graph, pos, graph_lock  # Ensure graph_lock is asyncio.Lock
+from backend.app.states import graph, positions, graph_lock  # Ensure graph_lock is asyncio.Lock
 import backend.app.sim_engine as sim_engine
 import asyncio
 
@@ -30,13 +30,14 @@ async def get_graph_data():  # Changed to async endpoint
             {
                 "id": n,
                 "status": states.graph.nodes[n]["data"].infection_status.value,
-                "x": states.pos[n][0],
-                "y": states.pos[n][1]
+                "x": states.positions[n][0],
+                "y": states.positions[n][1]
             }
             for n in states.graph.nodes
         ]
-        edges = [{"source": u, "target": v} for u, v in states.graph.edges]
-    return {"nodes": nodes, "edges": edges}
+        # edges = [{"source": u, "target": v} for u, v in states.graph.edges]
+    # return {"nodes": nodes, "edges": edges}
+    return {"nodes": nodes}
 
 @app.get("/tick-updates")
 async def get_tick_updates():  # Changed to async endpoint
