@@ -39,7 +39,7 @@ def run_tick(graph):
         ticks_since_recovery = current_tick - node_data.recovery_tick
 
         # Temporary immunity runs out, node becomes susceptible again
-        if ticks_since_recovery >= 14:
+        if ticks_since_recovery >= 10:
             node_data.infection_status = InfectionStatus.SUSCEPTIBLE
             re_susceptibles.add(node_id)
             RECOVERED.remove(node_id)
